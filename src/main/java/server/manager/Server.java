@@ -9,7 +9,7 @@ import java.net.InetAddress;
 
 public class Server {
 
-    private final static int PORT = 50028;
+    private final static int PORT = 50029;
     DatagramSocket serverSocket;
 
     private InetAddress senderAddress;

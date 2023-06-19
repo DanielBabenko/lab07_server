@@ -77,32 +77,17 @@ public class Controller {
         this.helperController = new HelperController(this.file, getRoot(), getServer());
     }
 
-    private static String getRandomString() {
-        int l = 6;
-        String AlphaNumericStr = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvxyz0123456789";
-        StringBuilder s = new StringBuilder(l);
-        int i;
-        for (i = 0; i < l; i++) {
-            int ch = (int) (AlphaNumericStr.length() * Math.random());
-            s.append(AlphaNumericStr.charAt(ch));
-        }
-        return s.toString();
-    }
-
     private void authorize() throws NoSuchAlgorithmException, IOException, SQLException {
         BufferedReader b = new BufferedReader(new InputStreamReader(System.in));
-        MessageDigest md = MessageDigest.getInstance("MD2");
         System.out.println("Введите имя пользователя");
         String user = b.readLine().trim();
         System.out.println("Введите пароль");
         String password = b.readLine().trim();
-        String salt = getRandomString();
-        String pepper = "#63Rq*9Oxx!";
 
-        byte[] hash = md.digest((pepper+password+salt).getBytes("UTF-8"));
 
         Login login = new Login(connectionManager);
-        login.checkOnAuth(user,salt,hash);
+        boolean log = login.saveUser(user,password);
+        if (!log) authorize();
     }
 
     /**
