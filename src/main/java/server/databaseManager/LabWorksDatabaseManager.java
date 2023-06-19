@@ -28,9 +28,10 @@ public class LabWorksDatabaseManager {
         return connectionManager.getConnection();
     }
 
-    public Map<Integer, Person> loadAuthors() throws SQLException{
+    public Map<Integer, Person> loadAuthors(int user_id) throws SQLException{
         Connection conn = getConnection();
-        PreparedStatement ps = conn.prepareStatement("SELECT * FROM authors");
+        PreparedStatement ps = conn.prepareStatement("SELECT * FROM authors user_id = ?");
+        ps.setInt(1,user_id);
         ResultSet rs = ps.executeQuery();
 
         Map<Integer,Person> authors = new HashMap<>();
@@ -49,9 +50,10 @@ public class LabWorksDatabaseManager {
         return authors;
     }
 
-    public Map<Integer,Coordinates> loadCoordinates() throws SQLException, NullX, InvalidFieldY {
+    public Map<Integer,Coordinates> loadCoordinates(int user_id) throws SQLException, NullX, InvalidFieldY {
         Connection conn = getConnection();
-        PreparedStatement ps = conn.prepareStatement("SELECT * FROM coordinates");
+        PreparedStatement ps = conn.prepareStatement("SELECT * FROM coordinates user_id = ?");
+        ps.setInt(1,user_id);
         ResultSet rs = ps.executeQuery();
 
         Map<Integer,Coordinates> coordinatesMap = new HashMap<>();
@@ -70,13 +72,14 @@ public class LabWorksDatabaseManager {
         return coordinatesMap;
     }
 
-    public List<LabWork> loadLabWorks() throws SQLException, NullX, InvalidFieldY {
-        Map<Integer,Person> authors = loadAuthors();
-        Map<Integer,Coordinates> coordinates = loadCoordinates();
-        List<LabWork> labWorkList = new LinkedList<>();
+    public LinkedList<LabWork> loadLabWorks(int user_id) throws SQLException, NullX, InvalidFieldY {
+        Map<Integer,Person> authors = loadAuthors(user_id);
+        Map<Integer,Coordinates> coordinates = loadCoordinates(user_id);
+        LinkedList<LabWork> labWorkList = new LinkedList<>();
 
         Connection conn = getConnection();
-        PreparedStatement ps = conn.prepareStatement("SELECT * FROM labWorks");
+        PreparedStatement ps = conn.prepareStatement("SELECT * FROM labWorks WHERE user_id = ?");
+        ps.setInt(1,user_id);
         ResultSet rs = ps.executeQuery();
 
         while (rs.next()){
@@ -99,16 +102,17 @@ public class LabWorksDatabaseManager {
         return labWorkList;
     }
 
-    public int addAuthors(Person author) throws SQLException{
+    public int addAuthors(Person author,int user_id) throws SQLException{
         Connection conn = getConnection();
         PreparedStatement ps = conn.prepareStatement(
-                "INSERT INTO authors(name, eye_color, height, birthday)"
-                + " VALUES(?,?,?,?) RETURNING id"
+                "INSERT INTO authors(name, eye_color, height, birthday,user_id)"
+                + " VALUES(?,?,?,?,?) RETURNING id"
         );
         ps.setString(1,author.getName());
         ps.setString(2,author.getEyeColor().toString());
         ps.setFloat(3,(float) author.getHeight());
         ps.setString(4,author.getBirthday());
+        ps.setInt(5,user_id);
 
         ResultSet rs = ps.executeQuery();
         conn.close();
@@ -117,13 +121,14 @@ public class LabWorksDatabaseManager {
         return rs.getInt(1);
     }
 
-    public int addCoordinates(Coordinates coordinates) throws SQLException{
+    public int addCoordinates(Coordinates coordinates,int user_id) throws SQLException{
         Connection conn = getConnection();
         PreparedStatement ps = conn.prepareStatement(
-                "INSERT INTO coordinates(X,Y) VALUES(?,?) RETURNING id"
+                "INSERT INTO coordinates(X,Y,user_id) VALUES(?,?,?) RETURNING id"
         );
         ps.setInt(1,coordinates.getX());
         ps.setDouble(2,coordinates.getY());
+        ps.setInt(3,user_id);
 
         ResultSet rs = ps.executeQuery();
         conn.close();
@@ -132,11 +137,11 @@ public class LabWorksDatabaseManager {
         return rs.getInt(1);
     }
 
-    public int addLabWork(LabWork labWork) throws SQLException{
+    public int addLabWork(LabWork labWork, int user_id) throws SQLException{
         Connection conn = getConnection();
         PreparedStatement ps = conn.prepareStatement(
-                "INSERT INTO labWorks(name, minimal_point,tuned_in_works,difficulty,coordinates_id,author)"
-                        + " VALUES(?,?,?,?,?,?) RETURNING id"
+                "INSERT INTO labWorks(name, minimal_point,tuned_in_works,difficulty,coordinates_id,author,user_id)"
+                        + " VALUES(?,?,?,?,?,?,?) RETURNING id"
         );
         ps.setString(1,labWork.getName());
         ps.setInt(2,labWork.getMinimalPoint());
@@ -145,11 +150,13 @@ public class LabWorksDatabaseManager {
         else ps.setInt(3, labWork.getTunedInWorks());
         ps.setString(4,labWork.getDifficulty().toString());
 
-        int coordinates_id = addCoordinates(labWork.getCoordinates());
+        int coordinates_id = addCoordinates(labWork.getCoordinates(),user_id);
         ps.setInt(5, coordinates_id);
 
-        int person_id = addAuthors(labWork.getAuthor());
+        int person_id = addAuthors(labWork.getAuthor(),user_id);
         ps.setInt(6, person_id);
+
+        ps.setInt(7,user_id);
 
         ResultSet rs = ps.executeQuery();
         conn.close();

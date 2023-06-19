@@ -15,6 +15,7 @@ import java.util.Map;
 
 public class Login {
     private final ConnectionManager connectionManager;
+    public int userID;
 
     public Login (String url, String login, String password) {
         connectionManager = new ConnectionManager(url, login, password);
@@ -28,13 +29,21 @@ public class Login {
         return connectionManager.getConnection();
     }
 
+    public int getUserID() {
+        return userID;
+    }
+
+    public void setUserID(int userID) {
+        this.userID = userID;
+    }
+
     public boolean saveUser(String username, String password) throws IOException, SQLException, NoSuchAlgorithmException {
         boolean auth = false;
         Map<String,String> users = loadUsers();
         if (users.isEmpty()||!(users.containsKey(username))) {
-            password = hashPassword(password);
-            users.put(username,password);
-            auth(username,password);
+            String hash = hashPassword(password);
+            users.put(username,hash);
+            setUserID(auth(username,hash));
             System.out.println("Авторизация нового пользователя прошла успешно!");
             auth = true;
         } else {
@@ -45,10 +54,10 @@ public class Login {
                 if (key.equals(username)){
                     if (value.equals(hashPassword(password))){
                         System.out.println("Аутентификация пользователя прошла успешно");
+                        setUserID(findUserID(username));
                         auth = true;
                     } else {
                         System.out.println("Ошибка авторизации! Повторите попытку!");
-                        System.out.println(hashPassword(password));
                         auth = false;
                     }
                     break;
@@ -60,13 +69,27 @@ public class Login {
 
     public int auth(String username, String password) throws IOException, SQLException {
         Connection conn = getConnection();
-        PreparedStatement ps = conn.prepareStatement("INSERT INTO users(username,password) VALUES(?,?)");
+        PreparedStatement ps = conn.prepareStatement("INSERT INTO users(username,password) VALUES(?,?) returning id");
         ps.setString(1, username);
         ps.setString(2, password);
 
-        int res = ps.executeUpdate();
+        ResultSet rs = ps.executeQuery();
         conn.close();
-        return res;
+        rs.next();
+
+        return rs.getInt(1);
+    }
+
+    private int findUserID(String username) throws SQLException {
+        Connection conn = getConnection();
+        PreparedStatement ps = conn.prepareStatement("SELECT id FROM users WHERE username = ?");
+        ps.setString(1,username);
+
+        ResultSet rs = ps.executeQuery();
+        conn.close();
+        rs.next();
+
+        return rs.getInt(1);
     }
 
     private static String getRandomString() {
@@ -86,8 +109,9 @@ public class Login {
         //String salt = getRandomString();
         String pepper = "#63Rq*9Oxx!";
 
-        byte[] hash = md.digest((pepper+password).getBytes("UTF-8"));
-        return pepper+password;
+        //byte[] hash = md.digest((pepper+password).getBytes("UTF-8"));
+        String hash = pepper+password.hashCode();
+        return hash;
     }
 
     public Map<String, String> loadUsers() throws SQLException, NullX, InvalidFieldY {

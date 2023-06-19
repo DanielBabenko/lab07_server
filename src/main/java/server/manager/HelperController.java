@@ -1,9 +1,11 @@
 package server.manager;
 
+import server.CurrentUser;
 import server.databaseManager.ConnectionManager;
 import server.databaseManager.LabWorksDatabaseManager;
 import server.databaseManager.Login;
 import server.exceptions.InvalidFieldY;
+import server.exceptions.NullX;
 import server.object.Coordinates;
 import server.object.LabWork;
 import server.object.Person;
@@ -42,6 +44,8 @@ public class HelperController {
     ConnectionManager connectionManager = new ConnectionManager(url,user,password);
 
     private LabWorksDatabaseManager dbManager = new LabWorksDatabaseManager(connectionManager);
+
+    private CurrentUser currentUser;
 
     public HelperController() throws IOException {}
 
@@ -144,10 +148,14 @@ public class HelperController {
      * Метод показывает все элементы коллекции.
      * Сортируя их по id
      */
-    public void show() {
-        LinkedList<LabWork> labWorkList = new LinkedList<>();
+    public void show() throws NullX, SQLException, InvalidFieldY {
+        //LinkedList<LabWork> labWorkList = new LinkedList<>();
         //List<String> h = new ArrayList<>();  Для истории оставим здесь, кусок кода который спас нас от допсы, автор Бабенко Даниил
-        labWorkList.addAll(getRoot().getLabWorkSet());
+        LabWorksDatabaseManager dManager = setDBManager();
+        int user_id = currentUser.getUserID();
+        LinkedList<LabWork> labWorkList = dManager.loadLabWorks(user_id);
+
+        //labWorkList.addAll(getRoot().getLabWorkSet());
         labWorkList.sort(compareByID);
         try {
 /*                for (LabWork lab: labWorkList){
@@ -319,8 +327,9 @@ public class HelperController {
         LabWork lab = getServer().getObjectFromClient();
 
         LabWorksDatabaseManager dManager = setDBManager();
+        int user_id = currentUser.getUserID();
 
-        int id = dManager.addLabWork(lab);
+        int id = dManager.addLabWork(lab,user_id);
         lab.setId(id);
 
         if (getRoot().getLabWorkSet().add(lab))
@@ -375,8 +384,9 @@ public class HelperController {
 
         if (getRoot().getLabWorkSet().isEmpty()){
             LabWorksDatabaseManager dManager = setDBManager();
+            int user_id = currentUser.getUserID();
 
-            int id = dManager.addLabWork(e);
+            int id = dManager.addLabWork(e,user_id);
             e.setId(id);
 
             getRoot().getLabWorkSet().add(e);
@@ -385,8 +395,9 @@ public class HelperController {
             LabWork maximum = Collections.max(getRoot().getLabWorkSet(), compareByMinPoint);
             if ((e.getMinimalPoint() - maximum.getMinimalPoint()) > 0) {
                 LabWorksDatabaseManager dManager = setDBManager();
+                int user_id = currentUser.getUserID();
 
-                int id = dManager.addLabWork(e);
+                int id = dManager.addLabWork(e,user_id);
                 e.setId(id);
 
                 getRoot().getLabWorkSet().add(e);
@@ -872,6 +883,10 @@ public class HelperController {
 
     public BufferedReader getReader() {
         return reader;
+    }
+
+    public void setCurrentUser(CurrentUser currentUser) {
+        this.currentUser = currentUser;
     }
 
     @Override

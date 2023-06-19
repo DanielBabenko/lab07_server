@@ -2,6 +2,7 @@ package server.manager;
 
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.text.WordUtils;
+import server.CurrentUser;
 import server.commands.ExecuteScript;
 import server.commands.Invoker;
 import server.commands.noInputCommands.help.GetHelpCommand;
@@ -88,6 +89,9 @@ public class Controller {
         Login login = new Login(connectionManager);
         boolean log = login.saveUser(user,password);
         if (!log) authorize();
+        System.out.println(login.getUserID());
+        CurrentUser now = new CurrentUser(login.getUserID());
+        helperController.setCurrentUser(now);
     }
 
     /**
