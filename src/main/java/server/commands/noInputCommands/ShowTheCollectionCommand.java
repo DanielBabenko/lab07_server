@@ -16,15 +16,7 @@ public class ShowTheCollectionCommand implements Command {
     }
 
     public void execute() {
-        try {
-            getHelperController().show();
-        } catch (NullX e) {
-            throw new RuntimeException(e);
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        } catch (InvalidFieldY e) {
-            throw new RuntimeException(e);
-        }
+        getHelperController().show();
     }
 
     public HelperController getHelperController() {

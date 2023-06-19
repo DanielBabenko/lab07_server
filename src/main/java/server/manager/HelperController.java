@@ -5,7 +5,6 @@ import server.databaseManager.ConnectionManager;
 import server.databaseManager.LabWorksDatabaseManager;
 import server.databaseManager.Login;
 import server.exceptions.InvalidFieldY;
-import server.exceptions.NullX;
 import server.object.Coordinates;
 import server.object.LabWork;
 import server.object.Person;
@@ -102,17 +101,22 @@ public class HelperController {
                 LabWork e = getServer().getObjectFromClient();
 
                 LabWorksDatabaseManager dbManager = setDBManager();
-                dbManager.upgradeLabWorks(id,e);
+                int user_id = currentUser.getUserID();
+                int updater = dbManager.upgradeLabWorks(id,user_id,e);
 
-                lab.setName(e.getName());
-                lab.setAuthor(e.getAuthor());
-                lab.setCoordinates(e.getCoordinates());
-                lab.setDifficulty(e.getDifficulty());
-                lab.setMinimalPoint(e.getMinimalPoint());
-                lab.setTunedInWorks(e.getTunedInWorks());
-                getServer().sentToClient("Элемент успешно обновлён!");
-                flag = false;
-                break;
+                if(updater == 0) {
+                    getServer().sentToClient("Вы не владелец этого элемента, вы его не можете модифицировать.");
+                } else {
+                    lab.setName(e.getName());
+                    lab.setAuthor(e.getAuthor());
+                    lab.setCoordinates(e.getCoordinates());
+                    lab.setDifficulty(e.getDifficulty());
+                    lab.setMinimalPoint(e.getMinimalPoint());
+                    lab.setTunedInWorks(e.getTunedInWorks());
+                    getServer().sentToClient("Элемент успешно обновлён!");
+                    flag = false;
+                    break;
+                }
             }
         }
         if (flag) {
@@ -148,14 +152,10 @@ public class HelperController {
      * Метод показывает все элементы коллекции.
      * Сортируя их по id
      */
-    public void show() throws NullX, SQLException, InvalidFieldY {
-        //LinkedList<LabWork> labWorkList = new LinkedList<>();
+    public void show() {
+        LinkedList<LabWork> labWorkList = new LinkedList<>();
         //List<String> h = new ArrayList<>();  Для истории оставим здесь, кусок кода который спас нас от допсы, автор Бабенко Даниил
-        LabWorksDatabaseManager dManager = setDBManager();
-        int user_id = currentUser.getUserID();
-        LinkedList<LabWork> labWorkList = dManager.loadLabWorks(user_id);
-
-        //labWorkList.addAll(getRoot().getLabWorkSet());
+        labWorkList.addAll(getRoot().getLabWorkSet());
         labWorkList.sort(compareByID);
         try {
 /*                for (LabWork lab: labWorkList){
@@ -239,8 +239,15 @@ public class HelperController {
             if (el.equals(comparableEl)) {
                 break;
             }
-            setDBManager().removeLabWork(el);
-            getRoot().getLabWorkSet().remove(el);
+            int user_id = currentUser.getUserID();
+            int check = setDBManager().removeLabWork(el,user_id);
+            if (check==0){
+                {
+                    getServer().sentToClient("Все элементы, которые можно было удалить, были удалены!");
+                }
+            } else {
+                getRoot().getLabWorkSet().remove(el);
+            }
         }
 
         getServer().sentToClient("Все элементы, большие данного, были удалены.");
@@ -265,8 +272,15 @@ public class HelperController {
             if (el.equals(comparableEl)) {
                 break;
             }
-            setDBManager().removeLabWork(el);
-            getRoot().getLabWorkSet().remove(el);
+            int user_id = currentUser.getUserID();
+            int check = setDBManager().removeLabWork(el,user_id);
+            if (check==0){
+                {
+                    getServer().sentToClient("Все элементы, которые можно было удалить, были удалены!");
+                }
+            } else {
+                getRoot().getLabWorkSet().remove(el);
+            }
         }
 
         getServer().sentToClient("Все элементы меньше данного были удалены.");
@@ -281,9 +295,15 @@ public class HelperController {
 
         for (LabWork lab : getRoot().getLabWorkSet()) {
             if (lab.getId() == id) {
-                setDBManager().removeLabWork(lab);
-                getRoot().getLabWorkSet().remove(lab);
-                flag = 1;
+                int user_id = currentUser.getUserID();
+                int check = setDBManager().removeLabWork(lab,user_id);
+
+                if (check!=0) {
+                    getRoot().getLabWorkSet().remove(lab);
+                    flag = 1;
+                } else {
+                    getServer().sentToClient("Вы не владелец этого элемента, вы не можете его удалить!");
+                }
                 try {
                     getServer().sentToClient("Элемент с данными id удалён.");
                 } catch (IOException e) {
@@ -675,6 +695,7 @@ public class HelperController {
      */
     public void clearCollection() throws SQLException {
 
+        int user_id = currentUser.getUserID();
         setDBManager().clearLabWorks();
 
         getRoot().getLabWorkSet().clear();

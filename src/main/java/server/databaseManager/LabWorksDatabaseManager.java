@@ -28,10 +28,9 @@ public class LabWorksDatabaseManager {
         return connectionManager.getConnection();
     }
 
-    public Map<Integer, Person> loadAuthors(int user_id) throws SQLException{
+    public Map<Integer, Person> loadAuthors() throws SQLException{
         Connection conn = getConnection();
-        PreparedStatement ps = conn.prepareStatement("SELECT * FROM authors user_id = ?");
-        ps.setInt(1,user_id);
+        PreparedStatement ps = conn.prepareStatement("SELECT * FROM authors");
         ResultSet rs = ps.executeQuery();
 
         Map<Integer,Person> authors = new HashMap<>();
@@ -50,10 +49,9 @@ public class LabWorksDatabaseManager {
         return authors;
     }
 
-    public Map<Integer,Coordinates> loadCoordinates(int user_id) throws SQLException, NullX, InvalidFieldY {
+    public Map<Integer,Coordinates> loadCoordinates() throws SQLException, NullX, InvalidFieldY {
         Connection conn = getConnection();
-        PreparedStatement ps = conn.prepareStatement("SELECT * FROM coordinates user_id = ?");
-        ps.setInt(1,user_id);
+        PreparedStatement ps = conn.prepareStatement("SELECT * FROM coordinates");
         ResultSet rs = ps.executeQuery();
 
         Map<Integer,Coordinates> coordinatesMap = new HashMap<>();
@@ -72,14 +70,13 @@ public class LabWorksDatabaseManager {
         return coordinatesMap;
     }
 
-    public LinkedList<LabWork> loadLabWorks(int user_id) throws SQLException, NullX, InvalidFieldY {
-        Map<Integer,Person> authors = loadAuthors(user_id);
-        Map<Integer,Coordinates> coordinates = loadCoordinates(user_id);
-        LinkedList<LabWork> labWorkList = new LinkedList<>();
+    public List<LabWork> loadLabWorks() throws SQLException, NullX, InvalidFieldY {
+        Map<Integer,Person> authors = loadAuthors();
+        Map<Integer,Coordinates> coordinates = loadCoordinates();
+        List<LabWork> labWorkList = new LinkedList<>();
 
         Connection conn = getConnection();
-        PreparedStatement ps = conn.prepareStatement("SELECT * FROM labWorks WHERE user_id = ?");
-        ps.setInt(1,user_id);
+        PreparedStatement ps = conn.prepareStatement("SELECT * FROM labWorks");
         ResultSet rs = ps.executeQuery();
 
         while (rs.next()){
@@ -165,11 +162,11 @@ public class LabWorksDatabaseManager {
         return rs.getInt(1);
     }
 
-    public int upgradeAuthor(int personId, Person newAuthor) throws SQLException {
+    public int upgradeAuthor(int personId,int userId, Person newAuthor) throws SQLException {
         Connection conn = getConnection();
         PreparedStatement ps = conn.prepareStatement("UPDATE authors "
                 + "SET name = ?, eye_color = ?, height = ? , birthday = ? "
-                + "WHERE id = ?"
+                + "WHERE id = ? AND user_id = ?"
         );
 
         ps.setString(1,newAuthor.getName());
@@ -177,33 +174,35 @@ public class LabWorksDatabaseManager {
         ps.setDouble(3,newAuthor.getHeight());
         ps.setString(4, newAuthor.getBirthday());
         ps.setInt(5,personId);
+        ps.setInt(6,userId);
 
         int res = ps.executeUpdate();
         conn.close();
         return res;
     }
 
-    public int upgradeCoordinates(int coordinatesId, Coordinates newCoordinates) throws SQLException {
+    public int upgradeCoordinates(int coordinatesId,int userId, Coordinates newCoordinates) throws SQLException {
         Connection conn = getConnection();
         PreparedStatement ps = conn.prepareStatement("UPDATE coordinates "
                 + "SET X = ?, Y = ? "
-                + "WHERE id = ?"
+                + "WHERE id = ? AND user_id = ?"
         );
 
         ps.setInt(1,newCoordinates.getX());
         ps.setDouble(2,newCoordinates.getY());
         ps.setInt(3,coordinatesId);
+        ps.setInt(4,userId);
 
         int res = ps.executeUpdate();
         conn.close();
         return res;
     }
 
-    public int upgradeLabWorks(int labWorkId, LabWork newLabWork) throws SQLException {
+    public int upgradeLabWorks(int labWorkId, int userId, LabWork newLabWork) throws SQLException {
         Connection conn = getConnection();
         PreparedStatement ps = conn.prepareStatement("UPDATE LabWorks SET "
                 + "name = ?, minimal_point = ?,tuned_in_works = ?,difficulty = ? "
-                + "WHERE id = ?"
+                + "WHERE id = ? AND user_id = ?"
         );
 
         ps.setString(1, newLabWork.getName());
@@ -214,16 +213,18 @@ public class LabWorksDatabaseManager {
         ps.setString(4, newLabWork.getDifficulty().toString());
 
         ps.setInt(5, labWorkId);
+        ps.setInt(6,userId);
 
         PreparedStatement ps2 = conn.prepareStatement("SELECT coordinates_id,author FROM labWorks "
-                + "WHERE id = ?"
+                + "WHERE id = ? AND user_id = ?"
         );
         ps2.setInt(1, labWorkId);
+        ps2.setInt(2,userId);
         ResultSet rs = ps2.executeQuery();
 
         while (rs.next()){
-            upgradeCoordinates(rs.getInt(1), newLabWork.getCoordinates());
-            upgradeAuthor(rs.getInt(2), newLabWork.getAuthor());
+            upgradeCoordinates(rs.getInt(1),userId, newLabWork.getCoordinates());
+            upgradeAuthor(rs.getInt(2),userId, newLabWork.getAuthor());
         }
 
         int res = ps.executeUpdate();
@@ -253,35 +254,39 @@ public class LabWorksDatabaseManager {
         return res;
     }
 
-    public int removeLabWork(LabWork labWork) throws SQLException {
+    public int removeLabWork(LabWork labWork, int userID) throws SQLException {
         Connection conn = getConnection();
 
         PreparedStatement statement_labWork = conn.prepareStatement(
-                "DELETE FROM labWorks WHERE id = ?"
+                "DELETE FROM labWorks WHERE id = ? AND user_id = ?"
         );
 
         PreparedStatement statement_author = conn.prepareStatement(
-                "DELETE FROM authors WHERE id = ?"
+                "DELETE FROM authors WHERE id = ? AND user_id = ?"
         );
 
         PreparedStatement statement_coordinates = conn.prepareStatement(
-                "DELETE FROM coordinates WHERE id = ?"
+                "DELETE FROM coordinates WHERE id = ? AND user_id = ?"
         );
 
         PreparedStatement ps2 = conn.prepareStatement("SELECT coordinates_id,author FROM labWorks "
-                + "WHERE id = ?"
+                + "WHERE id = ? AND user_id = ?"
         );
 
         ps2.setInt(1, labWork.getId());
+        ps2.setInt(2,userID);
         ResultSet rs = ps2.executeQuery();
 
         statement_labWork.setInt(1, labWork.getId());
+        statement_labWork.setInt(2,userID);
         int res = statement_labWork.executeUpdate();
 
         while (rs.next()){
             statement_coordinates.setInt(1,rs.getInt(1));
+            statement_coordinates.setInt(2,userID);
             statement_coordinates.executeUpdate();
             statement_author.setInt(1,rs.getInt(2));
+            statement_author.setInt(2,userID);
             statement_author.executeUpdate();
         }
 

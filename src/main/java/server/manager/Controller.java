@@ -89,7 +89,6 @@ public class Controller {
         Login login = new Login(connectionManager);
         boolean log = login.saveUser(user,password);
         if (!log) authorize();
-        System.out.println(login.getUserID());
         CurrentUser now = new CurrentUser(login.getUserID());
         helperController.setCurrentUser(now);
     }
