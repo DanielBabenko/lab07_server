@@ -3,7 +3,6 @@ package server.manager;
 import server.CurrentUser;
 import server.databaseManager.ConnectionManager;
 import server.databaseManager.LabWorksDatabaseManager;
-import server.databaseManager.Login;
 import server.exceptions.InvalidFieldY;
 import server.object.Coordinates;
 import server.object.LabWork;
@@ -390,6 +389,7 @@ public class HelperController {
 
         int id = dManager.addLabWork(lab,user_id);
         lab.setId(id);
+        lab.setUserID(user_id);
 
         if (getRoot().getLabWorkSet().add(lab))
             getServer().sentToClient("Элемент успешно добавлен в коллекцию!");
@@ -456,6 +456,7 @@ public class HelperController {
 
                 int id = dManager.addLabWork(e, user_id);
                 e.setId(id);
+                e.setUserID(user_id);
 
                 getRoot().getLabWorkSet().add(e);
                 getServer().sentToClient("Элемент успешно добавлен в коллекцию!");
@@ -751,19 +752,26 @@ public class HelperController {
     /**
      * Метод производит очистку коллекции.
      */
-    public void clearCollection() throws SQLException {
+    public void clearCollection() throws SQLException, IOException {
         lockCollection.lock();
         try {
         int user_id = currentUser.getUserID();
-        setDBManager().clearLabWorks();
+        int clear = setDBManager().clearLabWorks(user_id);
 
-        getRoot().getLabWorkSet().clear();
-        if (getRoot().getLabWorkSet().isEmpty()) {
+        //getRoot().getLabWorkSet().clear();
+        if (clear>0) {
             try {
+                for (LabWork lab:getRoot().getLabWorkSet()){
+                    if (lab.getUserID() == user_id){
+                        getRoot().getLabWorkSet().remove(lab);
+                    }
+                }
                 getServer().sentToClient("Коллекция " + getRoot().getLabWorkSet().getClass().getSimpleName() + " очищена!");
-            } catch (IOException e) {
-                throw new RuntimeException(e);
+            } catch (IOException| ConcurrentModificationException e) {
+                getServer().sentToClient("Все элементы коллекции, принадлежащие вам, удалены!");
             }
+        } else {
+            getServer().sentToClient("В коллекции не было ваших элементов.");
         }
 
         }  finally  {

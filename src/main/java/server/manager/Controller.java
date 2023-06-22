@@ -8,7 +8,6 @@ import server.commands.Invoker;
 import server.commands.noInputCommands.help.GetHelpCommand;
 import server.databaseManager.ConnectionManager;
 import server.databaseManager.LabWorksDatabaseManager;
-import server.databaseManager.Login;
 import server.exceptions.NotJsonFile;
 import server.inputCmdCollection.InputCommands;
 import server.noInputCmdCollection.NoInputCommands;
@@ -20,8 +19,6 @@ import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.text.ParseException;
@@ -129,8 +126,8 @@ public class Controller {
             while (!flag) {
                 System.out.println("The SERVER is RUNNING:");
                 String cmd = reformatCmd(getServer().dataFromClient());
-                Runnable r = () -> {
-                    try {
+//                Runnable r = () -> {
+//                    try {
                         String[] arr = cmd.split(" ", 2);
                         if (arr[0].equals("execute_script")) {
                             getExecuteScript().execute(arr[1]);
@@ -148,13 +145,13 @@ public class Controller {
                         } else {
                             searchCommandInCollection(cmd);
                         }
-                    } catch (IOException | ParseException e) {
-                        throw new RuntimeException();
-                    }
-                };
-
-                Thread thread = new Thread(r);
-                thread.start();
+//                    } catch (IOException | ParseException e) {
+//                        throw new RuntimeException();
+//                    }
+//                };
+//
+//                Thread thread = new Thread(r);
+//                thread.start();
 
                 connectionManager.getConnection().close();
                // getServer().sentToClient("? Если возникли трудности, введите команду help");

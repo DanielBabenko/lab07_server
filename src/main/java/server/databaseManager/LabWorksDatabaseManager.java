@@ -232,23 +232,25 @@ public class LabWorksDatabaseManager {
         return res;
     }
 
-    public int clearLabWorks() throws SQLException {
+    public int clearLabWorks(int userID) throws SQLException {
         Connection connection = getConnection();
 
         PreparedStatement statement_labWork = connection.prepareStatement(
-                "DELETE FROM labWorks"
+                "DELETE FROM labWorks WHERE user_id = ?"
         );
+        statement_labWork.setInt(1,userID);
         statement_labWork.executeUpdate();
 
         PreparedStatement statement_author = connection.prepareStatement(
-                "DELETE FROM authors"
+                "DELETE FROM authors WHERE user_id = ?"
         );
+        statement_author.setInt(1,userID);
         statement_author.executeUpdate();
 
         PreparedStatement statement_coordinates = connection.prepareStatement(
-                "DELETE FROM coordinates"
+                "DELETE FROM coordinates WHERE user_id = ?"
         );
-
+        statement_coordinates.setInt(1,userID);
         int res = statement_coordinates.executeUpdate();
         connection.close();
         return res;

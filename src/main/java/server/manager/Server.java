@@ -11,7 +11,7 @@ import java.util.concurrent.Executors;
 
 public class Server {
 
-    private final static int PORT = 50060;
+    private final static int PORT = 50097;
     DatagramSocket serverSocket;
 
     private InetAddress senderAddress;
