@@ -22,12 +22,15 @@ import java.text.ParseException;
 import java.time.DateTimeException;
 import java.time.LocalDate;
 import java.util.*;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  *
  */
 
 public class HelperController {
+    private Lock lockCollection = new ReentrantLock();
     private Root root; // Не может быть null
     private ArrayList<String> paths = new ArrayList<>(); // Не может быть null
     private BufferedReader reader; // Не может быть null
@@ -93,35 +96,40 @@ public class HelperController {
      * @throws ParseException
      */
     public void update(int id) throws IOException, ParseException, ClassNotFoundException, SQLException {
-        boolean flag = true;
+//        lockCollection.lock(); // lock part of this code
+//        try {
+            boolean flag = true;
 
-        for (LabWork lab : getRoot().getLabWorkSet()) {
-            if (lab.getId() == id) {
-                getServer().sentToClient("Загружаем объект:");
-                LabWork e = getServer().getObjectFromClient();
+            for (LabWork lab : getRoot().getLabWorkSet()) {
+                if (lab.getId() == id) {
+                    getServer().sentToClient("Загружаем объект:");
+                    LabWork e = getServer().getObjectFromClient();
 
-                LabWorksDatabaseManager dbManager = setDBManager();
-                int user_id = currentUser.getUserID();
-                int updater = dbManager.upgradeLabWorks(id,user_id,e);
+                    LabWorksDatabaseManager dbManager = setDBManager();
+                    int user_id = currentUser.getUserID();
+                    int updater = dbManager.upgradeLabWorks(id, user_id, e);
 
-                if(updater == 0) {
-                    getServer().sentToClient("Вы не владелец этого элемента, вы его не можете модифицировать.");
-                } else {
-                    lab.setName(e.getName());
-                    lab.setAuthor(e.getAuthor());
-                    lab.setCoordinates(e.getCoordinates());
-                    lab.setDifficulty(e.getDifficulty());
-                    lab.setMinimalPoint(e.getMinimalPoint());
-                    lab.setTunedInWorks(e.getTunedInWorks());
-                    getServer().sentToClient("Элемент успешно обновлён!");
-                    flag = false;
-                    break;
+                    if (updater == 0) {
+                        getServer().sentToClient("Вы не владелец этого элемента, вы его не можете модифицировать.");
+                    } else {
+                        lab.setName(e.getName());
+                        lab.setAuthor(e.getAuthor());
+                        lab.setCoordinates(e.getCoordinates());
+                        lab.setDifficulty(e.getDifficulty());
+                        lab.setMinimalPoint(e.getMinimalPoint());
+                        lab.setTunedInWorks(e.getTunedInWorks());
+                        getServer().sentToClient("Элемент успешно обновлён!");
+                        flag = false;
+                        break;
+                    }
                 }
             }
-        }
-        if (flag) {
-            getServer().sentToClient("Элемент с данным ID отсутствует!");
-        }
+            if (flag) {
+                getServer().sentToClient("Элемент с данным ID отсутствует!");
+            }
+//        } finally {
+//            lockCollection.unlock();
+//        }
     }
 
     private LabWork adder() throws IOException {
@@ -153,20 +161,24 @@ public class HelperController {
      * Сортируя их по id
      */
     public void show() {
-        LinkedList<LabWork> labWorkList = new LinkedList<>();
-        //List<String> h = new ArrayList<>();  Для истории оставим здесь, кусок кода который спас нас от допсы, автор Бабенко Даниил
-        labWorkList.addAll(getRoot().getLabWorkSet());
-        labWorkList.sort(compareByID);
+        lockCollection.lock();
         try {
+            LinkedList<LabWork> labWorkList = new LinkedList<>();
+            //List<String> h = new ArrayList<>();  Для истории оставим здесь, кусок кода который спас нас от допсы, автор Бабенко Даниил
+            labWorkList.addAll(getRoot().getLabWorkSet());
+            labWorkList.sort(compareByID);
+            try {
 /*                for (LabWork lab: labWorkList){
                     h.add(lab.toString());
                }
 */
-            getServer().sentToClient(SerializationManager.serialize(labWorkList));
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+                getServer().sentToClient(SerializationManager.serialize(labWorkList));
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        } finally {
+            lockCollection.unlock();
         }
-
     }
 
     /**
@@ -185,18 +197,25 @@ public class HelperController {
      * Метод info: получение информации о коллекции
      */
     public void getInfo() throws IOException {
-        if (getRoot().getLabWorkSet().isEmpty()) {
-            getServer().sentToClient("Ынформация по коллекции не найдена! Возможно она удаленна.");
-        } else {
-            getServer().sentToClient("Тип коллекции: " + getRoot().getLabWorkSet().getClass().getSimpleName() + "\n"+
-                    "Дата инициализации: " + getCreationDate() + "\n"+
-                    "Количество элементов: " + getRoot().getLabWorkSet().size()
-            );
+        lockCollection.lock();
+        try {
+            if (getRoot().getLabWorkSet().isEmpty()) {
+                getServer().sentToClient("Ынформация по коллекции не найдена! Возможно она удаленна.");
+            } else {
+                getServer().sentToClient("Тип коллекции: " + getRoot().getLabWorkSet().getClass().getSimpleName() + "\n" +
+                        "Дата инициализации: " + getCreationDate() + "\n" +
+                        "Количество элементов: " + getRoot().getLabWorkSet().size()
+                );
+            }
+        } finally {
+            lockCollection.unlock();
         }
     }
 
     public void getHelp() throws IOException {
-        getServer().sentToClient("Доступные  команды\n" +
+            lockCollection.lock();
+            try {
+            getServer().sentToClient("Доступные  команды\n" +
                 "help : вывести справку по доступным командам\n" +
                 "info : вывести в стандартный поток вывода информацию о коллекции (тип, дата инициализации, количество элементов и т.д.)\n" +
                 "show : вывести в стандартный поток вывода все элементы коллекции в строковом представлении\n" +
@@ -213,6 +232,9 @@ public class HelperController {
                 "max_by_author : вывести любой объект из коллекции, значение поля author которого является максимальным\n" +
                 "print_unique_tuned_in_works : вывести уникальные значения поля tunedInWorks всех элементов в коллекции\n" +
                 "print_field_ascending_tuned_in_works : вывести значения поля tunedInWorks всех элементов в порядке возрастания");
+     } finally {
+                lockCollection.unlock();
+            }
     }
 
     /**
@@ -225,32 +247,37 @@ public class HelperController {
      *
      */
     public void removeGreater() throws IOException, ParseException, ClassNotFoundException, SQLException {
-        getServer().sentToClient("Загружаем объект:");
-        LabWork comparableEl = getServer().getObjectFromClient();
+        lockCollection.lock();
+        try {
+            getServer().sentToClient("Загружаем объект:");
+            LabWork comparableEl = getServer().getObjectFromClient();
 
-        List<LabWork> labWorkList = new ArrayList<>();
-        labWorkList.add(comparableEl);
-        labWorkList.addAll(getRoot().getLabWorkSet());
-        labWorkList.sort(compareByDifficultyReverse);
-        labWorkList.sort(compareByMinPointReverse);
-        labWorkList.sort(compareByTunedInWorksReverse);
+            List<LabWork> labWorkList = new ArrayList<>();
+            labWorkList.add(comparableEl);
+            labWorkList.addAll(getRoot().getLabWorkSet());
+            labWorkList.sort(compareByDifficultyReverse);
+            labWorkList.sort(compareByMinPointReverse);
+            labWorkList.sort(compareByTunedInWorksReverse);
 
-        for (LabWork el : labWorkList) {
-            if (el.equals(comparableEl)) {
-                break;
-            }
-            int user_id = currentUser.getUserID();
-            int check = setDBManager().removeLabWork(el,user_id);
-            if (check==0){
-                {
-                    getServer().sentToClient("Все элементы, которые можно было удалить, были удалены!");
+            for (LabWork el : labWorkList) {
+                if (el.equals(comparableEl)) {
+                    break;
                 }
-            } else {
-                getRoot().getLabWorkSet().remove(el);
+                int user_id = currentUser.getUserID();
+                int check = setDBManager().removeLabWork(el, user_id);
+                if (check == 0) {
+                    {
+                        getServer().sentToClient("Все элементы, которые можно было удалить, были удалены!");
+                    }
+                } else {
+                    getRoot().getLabWorkSet().remove(el);
+                }
             }
-        }
 
-        getServer().sentToClient("Все элементы, большие данного, были удалены.");
+            getServer().sentToClient("Все элементы, большие данного, были удалены.");
+        } finally {
+            lockCollection.unlock();
+        }
     }
 
     /**
@@ -258,6 +285,8 @@ public class HelperController {
      *
      */
     public void removeLower() throws IOException, ClassNotFoundException, SQLException {
+        lockCollection.lock();
+        try {
         getServer().sentToClient("Загружаем объект:");
         LabWork comparableEl = getServer().getObjectFromClient();
 
@@ -284,6 +313,9 @@ public class HelperController {
         }
 
         getServer().sentToClient("Все элементы меньше данного были удалены.");
+    } finally {
+        lockCollection.unlock();
+     }
     }
 
     /**
@@ -291,33 +323,38 @@ public class HelperController {
      */
     public void removeEl(int id) throws IOException, SQLException {
 
-        int flag = 0;
+        lockCollection.lock();
+        try {
+            int flag = 0;
 
-        for (LabWork lab : getRoot().getLabWorkSet()) {
-            if (lab.getId() == id) {
-                int user_id = currentUser.getUserID();
-                int check = setDBManager().removeLabWork(lab,user_id);
+            for (LabWork lab : getRoot().getLabWorkSet()) {
+                if (lab.getId() == id) {
+                    int user_id = currentUser.getUserID();
+                    int check = setDBManager().removeLabWork(lab, user_id);
 
-                if (check!=0) {
-                    getRoot().getLabWorkSet().remove(lab);
-                    flag = 1;
-                } else {
-                    getServer().sentToClient("Вы не владелец этого элемента, вы не можете его удалить!");
+                    if (check != 0) {
+                        getRoot().getLabWorkSet().remove(lab);
+                        flag = 1;
+                    } else {
+                        getServer().sentToClient("Вы не владелец этого элемента, вы не можете его удалить!");
+                    }
+                    try {
+                        getServer().sentToClient("Элемент с данными id удалён.");
+                    } catch (IOException e) {
+                        getServer().sentToClient("Невалидный ввод данных. Повторите попытку.");
+                    }
+                    break;
                 }
+            }
+            if (flag == 0) {
                 try {
-                    getServer().sentToClient("Элемент с данными id удалён.");
+                    getServer().sentToClient("Элемент с данным id не найден!");
                 } catch (IOException e) {
-                    getServer().sentToClient("Невалидный ввод данных. Повторите попытку.");
+                    throw new RuntimeException(e);
                 }
-                break;
             }
-        }
-        if (flag == 0) {
-            try {
-                getServer().sentToClient("Элемент с данным id не найден!");
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
+        } finally {
+            lockCollection.unlock();
         }
     }
 
@@ -343,6 +380,8 @@ public class HelperController {
      * @see #addPerson()
      */
     public void addElement() throws IOException, ParseException, ClassNotFoundException, SQLException {
+//        lockCollection.lock();
+//        try {
         getServer().sentToClient("Загружаем объект:");
         LabWork lab = getServer().getObjectFromClient();
 
@@ -356,6 +395,9 @@ public class HelperController {
             getServer().sentToClient("Элемент успешно добавлен в коллекцию!");
         else
             getServer().sentToClient("К сожалению, что-то пошло не так. Попробуйте еще раз!");
+//    } finally {
+//        lockCollection.unlock();
+//     }
     }
 
     /**
@@ -391,6 +433,10 @@ public class HelperController {
         return new TreeMap<>(unsortedMap);
     }
 
+    public void userOnBase() throws IOException {
+        getServer().sentToClient("Зарегистрированный пользователь на базе.");
+    }
+
 
     /**
      * Добавить элемент в коллекцию, если он больше остальных. Сравнивая по
@@ -399,31 +445,38 @@ public class HelperController {
      * @throws ParseException
      */
     public void addIfMax() throws IOException, ParseException, ClassNotFoundException, SQLException {
-        getServer().sentToClient("Загружаем объект:");
-        LabWork e = getServer().getObjectFromClient();
+//        lockCollection.lock();
+//        try {
+            getServer().sentToClient("Загружаем объект:");
+            LabWork e = getServer().getObjectFromClient();
 
-        if (getRoot().getLabWorkSet().isEmpty()){
-            LabWorksDatabaseManager dManager = setDBManager();
-            int user_id = currentUser.getUserID();
-
-            int id = dManager.addLabWork(e,user_id);
-            e.setId(id);
-
-            getRoot().getLabWorkSet().add(e);
-            getServer().sentToClient("Элемент успешно добавлен в коллекцию!");}
-        else {
-            LabWork maximum = Collections.max(getRoot().getLabWorkSet(), compareByMinPoint);
-            if ((e.getMinimalPoint() - maximum.getMinimalPoint()) > 0) {
+            if (getRoot().getLabWorkSet().isEmpty()) {
                 LabWorksDatabaseManager dManager = setDBManager();
                 int user_id = currentUser.getUserID();
 
-                int id = dManager.addLabWork(e,user_id);
+                int id = dManager.addLabWork(e, user_id);
                 e.setId(id);
 
                 getRoot().getLabWorkSet().add(e);
                 getServer().sentToClient("Элемент успешно добавлен в коллекцию!");
-            } else { getServer().sentToClient("К сожалению, что-то пошло не так. Попробуйте еще раз!");}
-        }
+            } else {
+                LabWork maximum = Collections.max(getRoot().getLabWorkSet(), compareByMinPoint);
+                if ((e.getMinimalPoint() - maximum.getMinimalPoint()) > 0) {
+                    LabWorksDatabaseManager dManager = setDBManager();
+                    int user_id = currentUser.getUserID();
+
+                    int id = dManager.addLabWork(e, user_id);
+                    e.setId(id);
+
+                    getRoot().getLabWorkSet().add(e);
+                    getServer().sentToClient("Элемент успешно добавлен в коллекцию!");
+                } else {
+                    getServer().sentToClient("К сожалению, что-то пошло не так. Попробуйте еще раз!");
+                }
+            }
+//        } finally {
+//            lockCollection.unlock();
+//        }
     }
 
     /**
@@ -513,12 +566,17 @@ public class HelperController {
      * Метод сохраняет коллекцию в файл.
      */
     public void save() throws IOException {
-        ParserToJson parserToJson = new ParserToJson();
+//        lockCollection.lock();
+//        try {
+            ParserToJson parserToJson = new ParserToJson();
 
-        if (parserToJson.serialization(getRoot().getLabWorkSet(), this.fileName))
-            getServer().sentToClient("Коллекция " + getRoot().getLabWorkSet().getClass().getSimpleName() + " успешно сохранена в файл!");
-        else
-            getServer().sentToClient("Что-то пошлое не так :(");
+            if (parserToJson.serialization(getRoot().getLabWorkSet(), this.fileName))
+                getServer().sentToClient("Коллекция " + getRoot().getLabWorkSet().getClass().getSimpleName() + " успешно сохранена в файл!");
+            else
+                getServer().sentToClient("Что-то пошлое не так :(");
+//        } finally {
+//            lockCollection.unlock();
+//        }
     }
 
     /**
@@ -694,7 +752,8 @@ public class HelperController {
      * Метод производит очистку коллекции.
      */
     public void clearCollection() throws SQLException {
-
+        lockCollection.lock();
+        try {
         int user_id = currentUser.getUserID();
         setDBManager().clearLabWorks();
 
@@ -706,12 +765,18 @@ public class HelperController {
                 throw new RuntimeException(e);
             }
         }
+
+        }  finally  {
+        lockCollection.unlock();
+        }
     }
 
     /**
      * Сравнение авторов по имени, вывод максимального.
      */
     public void maxByAuthor() {
+        lockCollection.lock();
+        try {
         List<Person> authors = new ArrayList<>();
 
         if (!getRoot().getLabWorkSet().isEmpty()) {
@@ -741,6 +806,9 @@ public class HelperController {
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
+         }
+        }  finally  {
+            lockCollection.unlock();
         }
     }
 
@@ -748,6 +816,8 @@ public class HelperController {
      * Вывести уникальные значения tunedInWorks
      */
     public void printUniqueTunedInWorks() {
+        lockCollection.lock();
+        try {
         if(getRoot().getLabWorkSet().isEmpty()) {
             try {
                 getServer().sentToClient("Коллекция пустая");
@@ -761,6 +831,9 @@ public class HelperController {
         }
 
         printCollection(unique);
+        }  finally  {
+            lockCollection.unlock();
+        }
     }
 
     /**
@@ -784,6 +857,8 @@ public class HelperController {
      * Вывести значения {@linkLabWork#tunedInWorks} в порядке возрастания
      */
     public void printFieldAscendingTunedInWorks() {
+        lockCollection.lock();
+        try {
         if(getRoot().getLabWorkSet().isEmpty()) {
             try {
                 getServer().sentToClient("Коллекция пустая");
@@ -799,6 +874,9 @@ public class HelperController {
         Collections.sort(tunedInWorks);
 
         printCollection(tunedInWorks);
+        }  finally  {
+            lockCollection.unlock();
+        }
     }
 
     public Server getServer() {

@@ -6,6 +6,8 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class Server {
 
@@ -20,37 +22,51 @@ public class Server {
     }
 
     public void sentToClient(String data) throws IOException {
-        byte[] sendingDataBuffer;
+        ExecutorService executorService = Executors.newCachedThreadPool();
+        executorService.submit(() -> {
+            try {
+                byte[] sendingDataBuffer;
 
-        //  sent to client result
-        sendingDataBuffer = data.getBytes();
+                //  sent to client result
+                sendingDataBuffer = data.getBytes();
 
 
-        // create a new udp packet
-        DatagramPacket outputPacket = new DatagramPacket(
-                sendingDataBuffer, sendingDataBuffer.length,
-                getSenderAddress(), getSenderPort());
+                // create a new udp packet
+                DatagramPacket outputPacket = new DatagramPacket(
+                        sendingDataBuffer, sendingDataBuffer.length,
+                        getSenderAddress(), getSenderPort());
 
-        // send packet to client
-        serverSocket.send(outputPacket);
+                // send packet to client
+                serverSocket.send(outputPacket);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        });
 
     }
 
 
     public void sentToClient(byte[] data) throws IOException {
-        byte[] sendingDataBuffer;
+        ExecutorService executorService = Executors.newCachedThreadPool();
+        executorService.submit(() -> {
+            try {
+                byte[] sendingDataBuffer;
 
-        //  sent client result
-        sendingDataBuffer = data;
+                //  sent client result
+                sendingDataBuffer = data;
 
 
-        // create a new udp packet
-        DatagramPacket outputPacket = new DatagramPacket(
-                sendingDataBuffer, sendingDataBuffer.length,
-                getSenderAddress(), getSenderPort());
+                // create a new udp packet
+                DatagramPacket outputPacket = new DatagramPacket(
+                        sendingDataBuffer, sendingDataBuffer.length,
+                        getSenderAddress(), getSenderPort());
 
-        // send packet to client
-        serverSocket.send(outputPacket);
+                // send packet to client
+                serverSocket.send(outputPacket);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        });
 
     }
 

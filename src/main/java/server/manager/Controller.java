@@ -78,20 +78,20 @@ public class Controller {
         this.helperController = new HelperController(this.file, getRoot(), getServer());
     }
 
-    private void authorize() throws NoSuchAlgorithmException, IOException, SQLException {
-        BufferedReader b = new BufferedReader(new InputStreamReader(System.in));
-        System.out.println("Введите имя пользователя");
-        String user = b.readLine().trim();
-        System.out.println("Введите пароль");
-        String password = b.readLine().trim();
-
-
-        Login login = new Login(connectionManager);
-        boolean log = login.saveUser(user,password);
-        if (!log) authorize();
-        CurrentUser now = new CurrentUser(login.getUserID());
-        helperController.setCurrentUser(now);
-    }
+//    private void authorize() throws NoSuchAlgorithmException, IOException, SQLException {
+//        BufferedReader b = new BufferedReader(new InputStreamReader(System.in));
+//        System.out.println("Введите имя пользователя");
+//        String user = b.readLine().trim();
+//        System.out.println("Введите пароль");
+//        String password = b.readLine().trim();
+//
+//
+//        Login login = new Login(connectionManager);
+//        boolean log = login.saveUser(user,password);
+//        if (!log) authorize();
+//        CurrentUser now = new CurrentUser(login.getUserID());
+//        helperController.setCurrentUser(now);
+//    }
 
     /**
      * Самый главный метод класса, а может и всей программы.
@@ -125,27 +125,36 @@ public class Controller {
 
 
             helperController.setDbManager(labWorksDatabaseManager);
-            try {
-                authorize();
-            } catch (NoSuchAlgorithmException e) {
-                throw new RuntimeException(e);
-            }
 
             while (!flag) {
                 System.out.println("The SERVER is RUNNING:");
                 String cmd = reformatCmd(getServer().dataFromClient());
-                String[] arr = cmd.split(" ", 2);
-                if (arr[0].equals("execute_script")) {
-                    getExecuteScript().execute(arr[1]);
-                } else if (arr[0].equals("Exit")){
-                    // close socket connection
-                    getHelperController().save();
-                    getServer().sentToClient("Работа сервера остановлена.");
-                    getServer().getServerSocket().close();
-                    System.exit(0);
-                } else {
-                    searchCommandInCollection(cmd);
-                }
+                Runnable r = () -> {
+                    try {
+                        String[] arr = cmd.split(" ", 2);
+                        if (arr[0].equals("execute_script")) {
+                            getExecuteScript().execute(arr[1]);
+                        } else if (arr[0].equals("Exit")) {
+                            // close socket connection
+                            getHelperController().save();
+                            getServer().sentToClient("Работа сервера остановлена.");
+                            getServer().getServerSocket().close();
+                            System.exit(0);
+                        } else if(arr[0].equals("Auth")) {
+                            int user_id = Integer.parseInt(arr[1]);
+                            CurrentUser currentUser = new CurrentUser(user_id);
+                            getHelperController().setCurrentUser(currentUser);
+                            getHelperController().userOnBase();
+                        } else {
+                            searchCommandInCollection(cmd);
+                        }
+                    } catch (IOException | ParseException e) {
+                        throw new RuntimeException();
+                    }
+                };
+
+                Thread thread = new Thread(r);
+                thread.start();
 
                 connectionManager.getConnection().close();
                // getServer().sentToClient("? Если возникли трудности, введите команду help");
@@ -173,6 +182,7 @@ public class Controller {
         setInputCommands(inputCommands.getInputCommands());
 
         boolean flag = true;
+
         //  No input commands
         for (Map.Entry<String, Invoker> entry : getCommands().entrySet()) {
             String key = entry.getKey();
