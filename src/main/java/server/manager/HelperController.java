@@ -95,8 +95,8 @@ public class HelperController {
      * @throws ParseException
      */
     public void update(int id) throws IOException, ParseException, ClassNotFoundException, SQLException {
-//        lockCollection.lock(); // lock part of this code
-//        try {
+      lockCollection.lock(); // lock part of this code
+        try {
             boolean flag = true;
 
             for (LabWork lab : getRoot().getLabWorkSet()) {
@@ -126,9 +126,9 @@ public class HelperController {
             if (flag) {
                 getServer().sentToClient("Элемент с данным ID отсутствует!");
             }
-//        } finally {
-//            lockCollection.unlock();
-//        }
+        } finally {
+            lockCollection.unlock();
+        }
     }
 
     private LabWork adder() throws IOException {
@@ -379,8 +379,8 @@ public class HelperController {
      * @see #addPerson()
      */
     public void addElement() throws IOException, ParseException, ClassNotFoundException, SQLException {
-//        lockCollection.lock();
-//        try {
+        lockCollection.lock();
+        try {
         getServer().sentToClient("Загружаем объект:");
         LabWork lab = getServer().getObjectFromClient();
 
@@ -394,9 +394,9 @@ public class HelperController {
             getServer().sentToClient("Элемент успешно добавлен в коллекцию!");
         else
             getServer().sentToClient("К сожалению, что-то пошло не так. Попробуйте еще раз!");
-//    } finally {
-//        lockCollection.unlock();
-//     }
+    } finally {
+        lockCollection.unlock();
+     }
     }
 
     /**
@@ -444,8 +444,8 @@ public class HelperController {
      * @throws ParseException
      */
     public void addIfMax() throws IOException, ParseException, ClassNotFoundException, SQLException {
-//        lockCollection.lock();
-//        try {
+        lockCollection.lock();
+        try {
             getServer().sentToClient("Загружаем объект:");
             LabWork e = getServer().getObjectFromClient();
 
@@ -473,9 +473,9 @@ public class HelperController {
                     getServer().sentToClient("К сожалению, что-то пошло не так. Попробуйте еще раз!");
                 }
             }
-//        } finally {
-//            lockCollection.unlock();
-//        }
+        } finally {
+            lockCollection.unlock();
+        }
     }
 
     /**
@@ -565,17 +565,17 @@ public class HelperController {
      * Метод сохраняет коллекцию в файл.
      */
     public void save() throws IOException {
-//        lockCollection.lock();
-//        try {
+        lockCollection.lock();
+        try {
             ParserToJson parserToJson = new ParserToJson();
 
             if (parserToJson.serialization(getRoot().getLabWorkSet(), this.fileName))
                 getServer().sentToClient("Коллекция " + getRoot().getLabWorkSet().getClass().getSimpleName() + " успешно сохранена в файл!");
             else
                 getServer().sentToClient("Что-то пошлое не так :(");
-//        } finally {
-//            lockCollection.unlock();
-//        }
+        } finally {
+            lockCollection.unlock();
+        }
     }
 
     /**
