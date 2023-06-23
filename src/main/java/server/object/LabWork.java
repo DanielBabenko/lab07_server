@@ -25,8 +25,6 @@ public class LabWork implements Serializable {
     private Difficulty difficulty; //Поле может быть null
     private Person author; //Поле не может быть null
 
-    private int userID;
-
     private String creationDateString;  //Поле не может быть null, Значение этого поля должно генерироваться автоматически
 
     public LabWork(int id, String name, int minimalPoint, Long tunedInWorks, Difficulty difficulty, Coordinates coordinates, Person author, String creationDateString) {
@@ -175,14 +173,6 @@ public class LabWork implements Serializable {
                 "height=" + author.getHeight() + "\n" +
                 "eyeColor=" + author.getEyeColor() + "]\n" +
                 "---------------------" + "\n";
-    }
-
-    public void setUserID(int userID) {
-        this.userID = userID;
-    }
-
-    public int getUserID() {
-        return userID;
     }
 }
 

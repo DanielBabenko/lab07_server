@@ -126,8 +126,8 @@ public class Controller {
             while (!flag) {
                 System.out.println("The SERVER is RUNNING:");
                 String cmd = reformatCmd(getServer().dataFromClient());
-//                Runnable r = () -> {
-//                    try {
+                Runnable r = () -> {
+                    try {
                         String[] arr = cmd.split(" ", 2);
                         if (arr[0].equals("execute_script")) {
                             getExecuteScript().execute(arr[1]);
@@ -145,13 +145,13 @@ public class Controller {
                         } else {
                             searchCommandInCollection(cmd);
                         }
-//                    } catch (IOException | ParseException e) {
-//                        throw new RuntimeException();
-//                    }
-//                };
-//
-//                Thread thread = new Thread(r);
-//                thread.start();
+                    } catch (IOException | ParseException e) {
+                        throw new RuntimeException();
+                    }
+                };
+
+                Thread thread = new Thread(r);
+                thread.start();
 
                 connectionManager.getConnection().close();
                // getServer().sentToClient("? Если возникли трудности, введите команду help");

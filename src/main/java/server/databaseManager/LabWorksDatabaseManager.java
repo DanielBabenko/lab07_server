@@ -232,6 +232,25 @@ public class LabWorksDatabaseManager {
         return res;
     }
 
+    public LinkedList<Integer> elementToBeCleared(int userID) throws SQLException {
+        Connection connection = getConnection();
+        LinkedList<Integer> els = new LinkedList<>();
+
+        PreparedStatement del_labWork = connection.prepareStatement(
+                "SELECT id from labWorks where user_id = ?"
+        );
+        del_labWork.setInt(1,userID);
+
+        ResultSet rs = del_labWork.executeQuery();
+        while (rs.next()){
+            Integer id = rs.getInt("id");
+            els.add(id);
+        }
+
+        connection.close();
+        return els;
+    }
+
     public int clearLabWorks(int userID) throws SQLException {
         Connection connection = getConnection();
 

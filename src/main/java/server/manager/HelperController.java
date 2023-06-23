@@ -389,7 +389,6 @@ public class HelperController {
 
         int id = dManager.addLabWork(lab,user_id);
         lab.setId(id);
-        lab.setUserID(user_id);
 
         if (getRoot().getLabWorkSet().add(lab))
             getServer().sentToClient("Элемент успешно добавлен в коллекцию!");
@@ -434,7 +433,7 @@ public class HelperController {
     }
 
     public void userOnBase() throws IOException {
-        getServer().sentToClient("Зарегистрированный пользователь на базе.");
+        getServer().sentToClient("...");
     }
 
 
@@ -456,7 +455,6 @@ public class HelperController {
 
                 int id = dManager.addLabWork(e, user_id);
                 e.setId(id);
-                e.setUserID(user_id);
 
                 getRoot().getLabWorkSet().add(e);
                 getServer().sentToClient("Элемент успешно добавлен в коллекцию!");
@@ -756,13 +754,14 @@ public class HelperController {
         lockCollection.lock();
         try {
         int user_id = currentUser.getUserID();
+        LinkedList<Integer> elements = setDBManager().elementToBeCleared(user_id);
         int clear = setDBManager().clearLabWorks(user_id);
 
         //getRoot().getLabWorkSet().clear();
         if (clear>0) {
             try {
                 for (LabWork lab:getRoot().getLabWorkSet()){
-                    if (lab.getUserID() == user_id){
+                    if (elements.contains(lab.getId())){
                         getRoot().getLabWorkSet().remove(lab);
                     }
                 }

@@ -8,6 +8,8 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.RecursiveTask;
 
 public class Server {
 
@@ -71,29 +73,43 @@ public class Server {
     }
 
     public String dataFromClient() throws IOException {
+//        // fork join pool
 
-        boolean flag = false;
-      //  System.out.println("waiting for a client to connect: ");
-        while (!flag) {
-            byte[] receivingDataBuffer = new byte[1024];
-            DatagramPacket inputPacket = new DatagramPacket(receivingDataBuffer, receivingDataBuffer.length);
-            // give information from client
-            serverSocket.receive(inputPacket);
+        class GetDataViaForkJoinPool extends RecursiveTask<String> {
+            @Override
+            protected String compute() {
+                boolean flag = false;
+                while (!flag) {
+                    byte[] receivingDataBuffer = new byte[1024];
+                    DatagramPacket inputPacket = new DatagramPacket(receivingDataBuffer, receivingDataBuffer.length);
+                    // give information from client
+                    try {
+                        serverSocket.receive(inputPacket);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
 
-            String receivedData = new String(inputPacket.getData()).trim();
+                    String receivedData = new String(inputPacket.getData()).trim();
 
-            if (!receivedData.isEmpty()) {
+                    if (!receivedData.isEmpty()) {
 
-                setSenderAddress(inputPacket.getAddress());
-                setSenderPort(inputPacket.getPort());
+                        setSenderAddress(inputPacket.getAddress());
+                        setSenderPort(inputPacket.getPort());
 
 
-                System.out.println("Sent from client: " + receivedData);
-                return receivedData;
+                        System.out.println("Sent from client: " + receivedData);
+                        return receivedData;
+                    }
+                }
+                return "";
             }
         }
 
-        return "";
+        ForkJoinPool forkJoinPool = new ForkJoinPool();
+        GetDataViaForkJoinPool getDataViaForkJoinPool = new GetDataViaForkJoinPool();
+
+        return forkJoinPool.invoke(getDataViaForkJoinPool);
+
     }
 
     public LabWork getObjectFromClient() throws IOException, ClassNotFoundException {
