@@ -378,25 +378,25 @@ public class HelperController {
      * @see #addTunedInWorks()
      * @see #addPerson()
      */
-    public void addElement() throws IOException, ParseException, ClassNotFoundException, SQLException {
+    public synchronized void addElement() throws IOException, ParseException, ClassNotFoundException, SQLException {
         lockCollection.lock();
         try {
-        getServer().sentToClient("Загружаем объект:");
-        LabWork lab = getServer().getObjectFromClient();
+            getServer().sentToClient("Загружаем объект:");
+            LabWork lab = getServer().getObjectFromClient();
 
-        LabWorksDatabaseManager dManager = setDBManager();
-        int user_id = currentUser.getUserID();
+            LabWorksDatabaseManager dManager = setDBManager();
+            int user_id = currentUser.getUserID();
 
-        int id = dManager.addLabWork(lab,user_id);
-        lab.setId(id);
+                int id = dManager.addLabWork(lab, user_id);
+                lab.setId(id);
 
-        if (getRoot().getLabWorkSet().add(lab))
-            getServer().sentToClient("Элемент успешно добавлен в коллекцию!");
-        else
-            getServer().sentToClient("К сожалению, что-то пошло не так. Попробуйте еще раз!");
-    } finally {
-        lockCollection.unlock();
-     }
+                if (getRoot().getLabWorkSet().add(lab))
+                    getServer().sentToClient("Элемент успешно добавлен в коллекцию!");
+                else
+                    getServer().sentToClient("К сожалению, что-то пошло не так. Попробуйте еще раз!");
+            } finally {
+                lockCollection.unlock();
+            }
     }
 
     /**
