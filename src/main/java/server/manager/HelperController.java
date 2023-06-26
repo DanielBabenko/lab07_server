@@ -159,7 +159,7 @@ public class HelperController {
      * Метод показывает все элементы коллекции.
      * Сортируя их по id
      */
-    public void show() {
+    public synchronized void show() {
         lockCollection.lock();
         try {
             LinkedList<LabWork> labWorkList = new LinkedList<>();
@@ -387,8 +387,8 @@ public class HelperController {
             LabWorksDatabaseManager dManager = setDBManager();
             int user_id = currentUser.getUserID();
 
-                int id = dManager.addLabWork(lab, user_id);
-                lab.setId(id);
+            int id = dManager.addLabWork(lab, user_id);
+            lab.setId(id);
 
                 if (getRoot().getLabWorkSet().add(lab))
                     getServer().sentToClient("Элемент успешно добавлен в коллекцию!");
@@ -756,18 +756,17 @@ public class HelperController {
         int user_id = currentUser.getUserID();
         LinkedList<Integer> elements = setDBManager().elementToBeCleared(user_id);
         int clear = setDBManager().clearLabWorks(user_id);
+        Iterator it = getRoot().getLabWorkSet().iterator();
 
         //getRoot().getLabWorkSet().clear();
         if (clear>0) {
             try {
-                for (LabWork lab:getRoot().getLabWorkSet()){
-                    if (elements.contains(lab.getId())){
-                        getRoot().getLabWorkSet().remove(lab);
-                    }
+                for (Integer id: elements){
+                    removeToClear(id);
                 }
-                getServer().sentToClient("Коллекция " + getRoot().getLabWorkSet().getClass().getSimpleName() + " очищена!");
-            } catch (IOException| ConcurrentModificationException e) {
                 getServer().sentToClient("Все элементы коллекции, принадлежащие вам, удалены!");
+            } catch (IOException| ConcurrentModificationException e) {
+                getServer().sentToClient("Ошибка очистки!");
             }
         } else {
             getServer().sentToClient("В коллекции не было ваших элементов.");
@@ -775,6 +774,15 @@ public class HelperController {
 
         }  finally  {
         lockCollection.unlock();
+        }
+    }
+
+    public void removeToClear(int id) throws IOException {
+        for (LabWork lab : getRoot().getLabWorkSet()) {
+            if (lab.getId() == id) {
+                getRoot().getLabWorkSet().remove(lab);
+                break;
+            }
         }
     }
 

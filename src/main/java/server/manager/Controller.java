@@ -19,6 +19,7 @@ import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.security.NoSuchAlgorithmException;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.text.ParseException;
@@ -26,6 +27,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.RecursiveAction;
 
 /**
  * @see Controller нужен для вызова команд. Ыз него уже происходит вся работа программы.
@@ -53,6 +56,8 @@ public class Controller {
     ConnectionManager connectionManager = new ConnectionManager(url,user,password);
 
     LabWorksDatabaseManager labWorksDatabaseManager = new LabWorksDatabaseManager(connectionManager);
+
+    volatile boolean ready = false;
 
     /**
      * В конструкторе происходит автоматическая проверка json-файла.
@@ -127,40 +132,38 @@ public class Controller {
                 System.out.println("The SERVER is RUNNING:");
                 String cmd = reformatCmd(getServer().dataFromClient());
                 Runnable r = () -> {
-                    try {
-                        String[] arr = cmd.split(" ", 2);
-                        if (arr[0].equals("execute_script")) {
-                            getExecuteScript().execute(arr[1]);
-                        } else if (arr[0].equals("Exit")) {
-                            // close socket connection
-                            getHelperController().save();
-                            getServer().sentToClient("Работа сервера остановлена.");
-                            getServer().getServerSocket().close();
-                            System.exit(0);
-                        } else if(arr[0].equals("Auth")) {
-                            int user_id = Integer.parseInt(arr[1]);
-                            CurrentUser currentUser = new CurrentUser(user_id);
-                            getHelperController().setCurrentUser(currentUser);
-                            getHelperController().userOnBase();
-                        } else {
-                            searchCommandInCollection(cmd);
+                        try {
+                            String[] arr = cmd.split(" ", 2);
+                            if (arr[0].equals("execute_script")) {
+                                getExecuteScript().execute(arr[1]);
+                            } else if (arr[0].equals("Exit")) {
+                                // close socket connection
+                                getHelperController().save();
+                                getServer().sentToClient("Работа сервера остановлена.");
+                                getServer().getServerSocket().close();
+                                System.exit(0);
+                            } else if (arr[0].equals("Auth")) {
+                                int user_id = Integer.parseInt(arr[1]);
+                                CurrentUser currentUser = new CurrentUser(user_id);
+                                getHelperController().setCurrentUser(currentUser);
+                                getHelperController().userOnBase();
+                            } else {
+                                searchCommandInCollection(cmd);
+                            }
+                        } catch (IOException | ParseException e) {
+                            throw new RuntimeException();
                         }
-                    } catch (IOException | ParseException e) {
-                        throw new RuntimeException();
-                    }
                 };
 
                 Thread thread = new Thread(r);
                 thread.start();
+
 
                 connectionManager.getConnection().close();
                // getServer().sentToClient("? Если возникли трудности, введите команду help");
             }
         }
     }
-
-
-
 
     /**
      * В параметры метода передается переменная типа String
